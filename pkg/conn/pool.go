@@ -1,10 +1,15 @@
 package conn
 
+import (
+	"net"
+	"time"
+)
+
 type Client struct {
 	IdlePoolCh chan *Connection
 }
 
-func New(total int) *Client {
+func New(addr string, timeout time.Duration, total int) (*Client, error) {
 
 	pch := make(chan *Connection, total)
 	p := Client{
@@ -12,10 +17,16 @@ func New(total int) *Client {
 	}
 
 	for i := 0; i < total; i++ {
-		pch <- new(Connection)
+		conn, err := net.DialTimeout("tcp", addr, timeout)
+		if err != nil {
+			return nil, err
+		}
+		pch <- &Connection{
+			conn: conn,
+		}
 	}
 
-	return &p
+	return &p, nil
 }
 
 func (p Client) Exec(cmd Command, data Data) error {
